@@ -147,11 +147,6 @@ impl<T: io::Read> io::Read for NoiseOutput<T> {
                         }
                     };
                     trace!("read: next frame len = {}", n);
-                    if n == 0 {
-                        trace!("read: empty frame");
-                        self.read_state = ReadState::Init;
-                        continue
-                    }
                     self.read_state = ReadState::ReadData { len: usize::from(n), off: 0 }
                 }
                 ReadState::ReadData { len, ref mut off } => {
