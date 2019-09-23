@@ -358,12 +358,10 @@ where
     type Future = Pin<Box<dyn Future<Output = Result<Self::Output, Self::Error>>>>;
 
     fn upgrade_inbound(self, socket: Negotiated<T>, info: Self::Info) -> Self::Future {
-        Box::pin(async move {
-            match self.config.upgrade_inbound(socket, info).await {
-                Ok((RemoteIdentity::IdentityKey(pk), io)) => Ok((pk.into_peer_id(), io)),
-                _ => Err(NoiseError::AuthenticationFailed),
-            }
-        })
+        Box::pin(self.config.upgrade_inbound(socket, info).map(|r| match r {
+            Ok((RemoteIdentity::IdentityKey(pk), io)) => Ok((pk.into_peer_id(), io)),
+            _ => Err(NoiseError::AuthenticationFailed),
+        }))
     }
 }
 
@@ -383,11 +381,9 @@ where
     type Future = Pin<Box<dyn Future<Output = Result<Self::Output, Self::Error>>>>;
 
     fn upgrade_outbound(self, socket: Negotiated<T>, info: Self::Info) -> Self::Future {
-        Box::pin(async move {
-            match self.config.upgrade_outbound(socket, info).await {
-                Ok((RemoteIdentity::IdentityKey(pk), io)) => Ok((pk.into_peer_id(), io)),
-                _ => Err(NoiseError::AuthenticationFailed)
-            }
-        })
+        Box::pin(self.config.upgrade_outbound(socket, info).map(|r| match r {
+            Ok((RemoteIdentity::IdentityKey(pk), io)) => Ok((pk.into_peer_id(), io)),
+            _ => Err(NoiseError::AuthenticationFailed)
+        }))
     }
 }
