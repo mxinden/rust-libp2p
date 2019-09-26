@@ -69,7 +69,7 @@ pub struct NoiseOutput<T> {
 impl<T> fmt::Debug for NoiseOutput<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("NoiseOutput")
-            .field("read_state", &self.read_state)
+            // .field("read_state", &self.read_state)
             .field("write_state", &self.write_state)
             .finish()
     }
@@ -87,12 +87,12 @@ impl<T> NoiseOutput<T> {
 }
 
 /// The various states of reading a noise session transitions through.
-#[derive(Debug)]
+// #[derive(Debug)]
 enum ReadState {
     /// initial state
     Init,
     /// read frame length
-    ReadLen { buf: [u8; 2], off: usize },
+    ReadLen { buf: [u8; 2], fut: Pin<Box<Future<Output = Result<(), std::io::Error>> + Send>> },
     /// read encrypted frame data
     ReadData { len: usize, off: usize },
     /// copy decrypted frame data
@@ -121,7 +121,7 @@ enum WriteState {
     EncErr
 }
 
-impl<T: AsyncRead + Unpin> AsyncRead for NoiseOutput<T> {
+impl<T: AsyncRead + Unpin + Send> AsyncRead for NoiseOutput<T> {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -132,28 +132,26 @@ impl<T: AsyncRead + Unpin> AsyncRead for NoiseOutput<T> {
         let buffer = this.buffer.borrow_mut();
 
         loop {
-            trace!("read state: {:?}", this.read_state);
+            // trace!("read state: {:?}", this.read_state);
             match this.read_state {
                 ReadState::Init => {
-                    this.read_state = ReadState::ReadLen { buf: [0, 0], off: 0 };
+                    let buf = [0, 0];
+                    let fut = futures::io::AsyncReadExt::read_exact(&mut this.io, &mut buf);
+                    this.read_state = ReadState::ReadLen{fut: Box::pin(fut), buf};
                 }
-                ReadState::ReadLen { mut buf, mut off } => {
-                    let n = match read_frame_len(&mut this.io, cx, &mut buf, &mut off) {
-                        Poll::Ready(Ok(Some(n))) => n,
-                        Poll::Ready(Ok(None)) => {
-                            trace!("read: eof");
-                            this.read_state = ReadState::Eof(Ok(()));
-                            return Poll::Ready(Ok(0))
-                        }
-                        Poll::Ready(Err(e)) => {
-                            return Poll::Ready(Err(e))
-                        }
+                ReadState::ReadLen{buf, fut} => {
+                    match Future::poll(fut.as_mut(), cx) {
+                        Poll::Ready(Ok(())) => (),
+                        Poll::Ready(Err(e)) => return Poll::Ready(Err(e)),
                         Poll::Pending => {
-                            this.read_state = ReadState::ReadLen { buf, off };
+                            this.read_state = ReadState::ReadLen{ buf, fut};
 
                             return Poll::Pending;
                         }
-                    };
+                    }
+
+                    let n = u16::from_be_bytes(buf);
+
                     trace!("read: next frame len = {}", n);
                     if n == 0 {
                         trace!("read: empty frame");
@@ -199,7 +197,9 @@ impl<T: AsyncRead + Unpin> AsyncRead for NoiseOutput<T> {
                     trace!("read: copied {}/{} bytes", *off + n, len);
                     *off += n;
                     if len == *off {
-                        this.read_state = ReadState::ReadLen { buf: [0, 0], off: 0 };
+                        let buf = [0, 0];
+                        let fut = futures::io::AsyncReadExt::read_exact(&mut this.io, &mut buf);
+                        this.read_state = ReadState::ReadLen{fut: Box::pin(fut), buf};
                     }
                     return Poll::Ready(Ok(n))
                 }

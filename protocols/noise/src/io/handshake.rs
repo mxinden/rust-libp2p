@@ -334,7 +334,7 @@ impl<T> State<T>
 /// A future for receiving a Noise handshake message with an empty payload.
 async fn recv_empty<T>(state: &mut State<T>) -> Result<(), NoiseError>
 where
-    T: AsyncRead + Unpin
+    T: AsyncRead + Unpin + Send
 {
     state.io.read(&mut []).await?;
     Ok(())
@@ -354,7 +354,7 @@ where
 /// identifying the remote.
 async fn recv_identity<T>(state: &mut State<T>) -> Result<(), NoiseError>
 where
-    T: AsyncRead + Unpin,
+    T: AsyncRead + Unpin + Send,
 {
     let mut len_buf = [0,0];
     state.io.read_exact(&mut len_buf).await?;
