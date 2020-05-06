@@ -438,6 +438,26 @@ mod tests {
         }
     }
 
+    impl Graph {
+        fn get_closest_peer(&self, target: &KeyBytes) -> PeerId {
+            self.0.iter()
+                .map(|(peer_id, _)| (target.distance(&Key::new(peer_id.clone())), peer_id))
+                .fold(None, |acc, (distance_b, peer_id_b)| {
+                    match acc {
+                        None => Some((distance_b, peer_id_b)),
+                        Some((distance_a, peer_id_a)) => if distance_a < distance_b {
+                            Some((distance_a, peer_id_a))
+                        } else {
+                            Some((distance_b, peer_id_b))
+                        }
+                    }
+
+                })
+                .expect("Graph to have at least one peer.")
+                .1.clone()
+        }
+    }
+
     #[derive(Debug, Clone)]
     struct Peer {
         known_peers: Vec<PeerId>,
@@ -483,6 +503,7 @@ mod tests {
     fn closest_and_disjoint_closest_yield_similar_result() {
         fn prop(graph: Graph, parallelism: Parallelism, num_results: NumResults) {
             let target: KeyBytes = Key::from(PeerId::random()).into();
+            let closest_peer = graph.get_closest_peer(&target);
 
             let mut known_closest_peers = graph.0.iter()
                 .take(parallelism.0 * ALPHA_VALUE.get())
@@ -516,6 +537,15 @@ mod tests {
                 )),
                 &graph,
                 &target,
+            );
+
+            assert!(
+                closest.contains(&closest_peer),
+                "Expected ClosestPeersIter to find closest peer.",
+            );
+            assert!(
+                disjoint.contains(&closest_peer),
+                "Expected ClosestDisjointPeersIter to find closest peer.",
             );
 
             assert_eq!(closest.len(), disjoint.len());
