@@ -82,21 +82,25 @@ impl ClosestDisjointPeersIter {
         }
     }
 
-    pub fn on_failure(&mut self, peer: &PeerId) {
+    pub fn on_failure(&mut self, peer: &PeerId) -> bool {
         // All peer failures are reported to all queries and thus to all peer
         // iterators. If this iterator never started a request to the given peer
         // ignore the failure.
         if let Some(index) = self.yielded_peers.get(peer) {
             self.iters[*index].on_failure(peer)
+        } else {
+            false
         }
     }
 
-    pub fn on_success<I>(&mut self, peer: &PeerId, closer_peers: I)
+    pub fn on_success<I>(&mut self, peer: &PeerId, closer_peers: I) -> bool
     where
         I: IntoIterator<Item = PeerId>,
     {
         if let Some(index) = self.yielded_peers.get(peer) {
-            self.iters[*index].on_success(peer, closer_peers);
+            self.iters[*index].on_success(peer, closer_peers)
+        } else {
+            false
         }
     }
 
