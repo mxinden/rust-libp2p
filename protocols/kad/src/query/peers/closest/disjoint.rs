@@ -273,6 +273,16 @@ impl ClosestDisjointPeersIter {
         }
     }
 
+    pub fn is_finished(&self) -> bool {
+        for iter in &self.iters {
+            if !iter.is_finished() {
+                return false;
+            }
+        }
+
+        true
+    }
+
     pub fn into_result(self) -> impl Iterator<Item = PeerId> {
         let mut result = HashSet::new();
 

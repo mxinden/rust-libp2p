@@ -355,6 +355,7 @@ impl<TInner> Query<TInner> {
     pub fn is_finished(&self) -> bool {
         match &self.peer_iter {
             QueryPeerIter::Closest(iter) => iter.is_finished(),
+            QueryPeerIter::ClosestDisjoint(iter) => iter.is_finished(),
             QueryPeerIter::Fixed(iter) => iter.is_finished()
         }
     }
