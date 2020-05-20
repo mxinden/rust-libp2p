@@ -85,6 +85,10 @@ pub struct Kademlia<TStore> {
     /// How long to keep connections alive when they're idle.
     connection_idle_timeout: Duration,
 
+    /// TODO: document
+    // TODO: Maybe rename to automatic_kbucket_updates
+    automatic_routing_table_updates: bool,
+
     /// Queued events to return when the behaviour is being polled.
     queued_events: VecDeque<NetworkBehaviourAction<KademliaHandlerIn<QueryId>, KademliaEvent>>,
 
@@ -106,6 +110,7 @@ pub struct KademliaConfig {
     provider_record_ttl: Option<Duration>,
     provider_publication_interval: Option<Duration>,
     connection_idle_timeout: Duration,
+    automatic_routing_table_updates: bool,
 }
 
 impl Default for KademliaConfig {
@@ -120,6 +125,7 @@ impl Default for KademliaConfig {
             provider_publication_interval: Some(Duration::from_secs(12 * 60 * 60)),
             provider_record_ttl: Some(Duration::from_secs(24 * 60 * 60)),
             connection_idle_timeout: Duration::from_secs(10),
+            automatic_routing_table_updates: true,
         }
     }
 }
@@ -241,6 +247,12 @@ impl KademliaConfig {
         self.protocol_config.set_max_packet_size(size);
         self
     }
+
+    /// TODO: document
+    pub fn disable_automatic_routing_table_updates(&mut self) -> &mut Self {
+        self.automatic_routing_table_updates = false;
+        self
+    }
 }
 
 impl<TStore> Kademlia<TStore>
@@ -287,6 +299,7 @@ where
             record_ttl: config.record_ttl,
             provider_record_ttl: config.provider_record_ttl,
             connection_idle_timeout: config.connection_idle_timeout,
+            automatic_routing_table_updates: config.automatic_routing_table_updates,
         }
     }
 
@@ -1278,6 +1291,10 @@ where
     }
 
     fn inject_connection_established(&mut self, peer: &PeerId, _: &ConnectionId, endpoint: &ConnectedPoint) {
+        if !self.automatic_routing_table_updates {
+            return
+        }
+
         // The remote's address can only be put into the routing table,
         // and thus shared with other nodes, if the local node is the dialer,
         // since the remote address on an inbound connection is specific to
