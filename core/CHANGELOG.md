@@ -1,4 +1,4 @@
-# Unreleased
+# 0.24.0 [unreleased]
 
 - Remove `ConnectionInfo` trait and replace it with `PeerId`
   everywhere. This was already effectively the case because
