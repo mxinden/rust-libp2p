@@ -556,13 +556,12 @@ mod tests {
     use crate::IdentTopic as Topic;
     use libp2p_core::identity::Keypair;
     use quickcheck::*;
-    use rand::Rng;
 
     #[derive(Clone, Debug)]
     struct Message(RawGossipsubMessage);
 
     impl Arbitrary for Message {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        fn arbitrary(g: &mut Gen) -> Self {
             let keypair = TestKeypair::arbitrary(g);
 
             // generate an arbitrary GossipsubMessage using the behaviour signing functionality
@@ -572,8 +571,8 @@ mod tests {
                 config,
             )
             .unwrap();
-            let data = (0..g.gen_range(10, 10024))
-                .map(|_| g.gen())
+            let data = (0..(10 + usize::arbitrary(g) % 10014))
+                .map(|_| Arbitrary::arbitrary(g))
                 .collect::<Vec<_>>();
             let topic_id = TopicId::arbitrary(g).0;
             Message(gs.build_raw_message(topic_id, data).unwrap())
@@ -584,11 +583,13 @@ mod tests {
     struct TopicId(TopicHash);
 
     impl Arbitrary for TopicId {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let topic_string: String = (0..g.gen_range(20, 1024))
-                .map(|_| g.gen::<char>())
-                .collect::<String>()
-                .into();
+        fn arbitrary(g: &mut Gen) -> Self {
+
+            let topic_string = std::iter::repeat(String::arbitrary(g).chars())
+                .flatten()
+                .take(20 + usize::arbitrary(g) % 1004)
+                .collect::<String>();
+
             TopicId(Topic::new(topic_string).into())
         }
     }
@@ -597,8 +598,8 @@ mod tests {
     struct TestKeypair(Keypair);
 
     impl Arbitrary for TestKeypair {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let keypair = if g.gen() {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let keypair = if Arbitrary::arbitrary(g) {
                 // Small enough to be inlined.
                 Keypair::generate_secp256k1()
             } else {

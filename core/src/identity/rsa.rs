@@ -236,8 +236,8 @@ mod tests {
     }
 
     impl Arbitrary for SomeKeypair {
-        fn arbitrary<G: Gen>(g: &mut G) -> SomeKeypair {
-            let mut key = [KEY1, KEY2, KEY3].choose(g).unwrap().to_vec();
+        fn arbitrary(g: &mut Gen) -> SomeKeypair {
+            let mut key = g.choose(&[KEY1, KEY2, KEY3]).unwrap().to_vec();
             SomeKeypair(Keypair::from_pkcs8(&mut key).unwrap())
         }
     }
@@ -268,4 +268,3 @@ mod tests {
         QuickCheck::new().tests(10).quickcheck(prop as fn(_,_) -> _);
     }
 }
-

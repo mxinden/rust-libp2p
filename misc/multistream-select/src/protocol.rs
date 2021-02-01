@@ -439,10 +439,14 @@ mod tests {
     use std::iter;
 
     impl Arbitrary for Protocol {
-        fn arbitrary<G: Gen>(g: &mut G) -> Protocol {
-            let n = g.gen_range(1, g.size());
+        fn arbitrary(g: &mut Gen) -> Protocol {
+            let alphanumeric: Vec<char> = ('a'..'b').into_iter()
+                .chain('A'..'B')
+                .chain('0'..'9')
+                .collect();
+            let n = 1 + usize::arbitrary(g) % g.size();
             let p: String = iter::repeat(())
-                .map(|()| g.sample(Alphanumeric))
+                .map(|()| g.choose(alphanumeric.as_slice()).unwrap())
                 .take(n)
                 .collect();
             Protocol(Bytes::from(format!("/{}", p)))
@@ -450,8 +454,8 @@ mod tests {
     }
 
     impl Arbitrary for Message {
-        fn arbitrary<G: Gen>(g: &mut G) -> Message {
-            match g.gen_range(0, 5) {
+        fn arbitrary(g: &mut Gen) -> Message {
+            match u8::arbitrary(g) % 5 {
                 0 => Message::Header(HeaderLine::V1),
                 1 => Message::NotAvailable,
                 2 => Message::ListProtocols,

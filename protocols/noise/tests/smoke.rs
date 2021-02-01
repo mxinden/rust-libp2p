@@ -263,10 +263,10 @@ fn expect_identity<C>(output: Output<C>, pk: &identity::PublicKey)
 struct Message(Vec<u8>);
 
 impl quickcheck::Arbitrary for Message {
-    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
-        let s = 1 + g.next_u32() % (128 * 1024);
-        let mut v = vec![0; s.try_into().unwrap()];
-        g.fill_bytes(&mut v);
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        let s = 1 + u32::arbitrary(g) % (128 * 1024);
+        let v = (0..s).map(|_| quickcheck::Arbitrary::arbitrary(g))
+            .collect::<Vec<_>>();
         Message(v)
     }
 }

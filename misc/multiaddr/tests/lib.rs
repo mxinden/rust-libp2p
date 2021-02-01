@@ -6,7 +6,7 @@ use quickcheck::{Arbitrary, Gen, QuickCheck};
 use rand::Rng;
 use std::{
     borrow::Cow,
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     iter::FromIterator,
     net::{Ipv4Addr, Ipv6Addr},
     str::FromStr
@@ -64,8 +64,8 @@ fn push_pop_identity() {
 struct Ma(Multiaddr);
 
 impl Arbitrary for Ma {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let iter = (0 .. g.next_u32() % 128).map(|_| Proto::arbitrary(g).0);
+    fn arbitrary(g: &mut Gen) -> Self {
+        let iter = (0 .. <u32 as Arbitrary>::arbitrary(g) % 128).map(|_| Proto::arbitrary(g).0);
         Ma(Multiaddr::from_iter(iter))
     }
 }
@@ -74,10 +74,10 @@ impl Arbitrary for Ma {
 struct Proto(Protocol<'static>);
 
 impl Arbitrary for Proto {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+    fn arbitrary(g: &mut Gen) -> Self {
         use Protocol::*;
-        match g.gen_range(0, 25) { // TODO: Add Protocol::Quic
-             0 => Proto(Dccp(g.gen())),
+        match u8::arbitrary(g) % 25 { // TODO: Add Protocol::Quic
+             0 => Proto(Dccp(Arbitrary::arbitrary(g))),
              1 => Proto(Dns(Cow::Owned(SubString::arbitrary(g).0))),
              2 => Proto(Dns4(Cow::Owned(SubString::arbitrary(g).0))),
              3 => Proto(Dns6(Cow::Owned(SubString::arbitrary(g).0))),
@@ -88,28 +88,32 @@ impl Arbitrary for Proto {
              8 => Proto(P2pWebRtcDirect),
              9 => Proto(P2pWebRtcStar),
             10 => Proto(P2pWebSocketStar),
-            11 => Proto(Memory(g.gen())),
+            11 => Proto(Memory(Arbitrary::arbitrary(g))),
             // TODO: impl Arbitrary for Multihash:
             12 => Proto(P2p(multihash("QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC"))),
             13 => Proto(P2pCircuit),
             14 => Proto(Quic),
-            15 => Proto(Sctp(g.gen())),
-            16 => Proto(Tcp(g.gen())),
-            17 => Proto(Udp(g.gen())),
+            15 => Proto(Sctp(Arbitrary::arbitrary(g))),
+            16 => Proto(Tcp(Arbitrary::arbitrary(g))),
+            17 => Proto(Udp(Arbitrary::arbitrary(g))),
             18 => Proto(Udt),
             19 => Proto(Unix(Cow::Owned(SubString::arbitrary(g).0))),
             20 => Proto(Utp),
             21 => Proto(Ws("/".into())),
             22 => Proto(Wss("/".into())),
             23 => {
-                let mut a = [0; 10];
-                g.fill(&mut a);
-                Proto(Onion(Cow::Owned(a), g.gen_range(1, std::u16::MAX)))
+                let a = (0..10).map(|_| Arbitrary::arbitrary(g))
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap();
+                Proto(Onion(Cow::Owned(a), (u16::arbitrary(g) % std::u16::MAX) + 1))
             },
             24 => {
-                let mut a = [0; 35];
-                g.fill_bytes(&mut a);
-                Proto(Onion3((a, g.gen_range(1, std::u16::MAX)).into()))
+                let a: [u8;35] = (0..35).map(|_| Arbitrary::arbitrary(g))
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap();
+                Proto(Onion3((a, (u16::arbitrary(g) % std::u16::MAX) + 1).into()))
             },
              _ => panic!("outside range")
         }
@@ -120,7 +124,7 @@ impl Arbitrary for Proto {
 struct SubString(String); // ASCII string without '/'
 
 impl Arbitrary for SubString {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+    fn arbitrary(g: &mut Gen) -> Self {
         let mut s = String::arbitrary(g);
         s.retain(|c| c.is_ascii() && c != '/');
         SubString(s)

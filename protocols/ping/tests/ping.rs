@@ -211,7 +211,7 @@ enum MuxerChoice {
 }
 
 impl Arbitrary for MuxerChoice {
-    fn arbitrary<G: Gen>(g: &mut G) -> MuxerChoice {
-        *[MuxerChoice::Mplex, MuxerChoice::Yamux].choose(g).unwrap()
+    fn arbitrary(g: &mut Gen) -> MuxerChoice {
+        *g.choose(&[MuxerChoice::Mplex, MuxerChoice::Yamux]).unwrap()
     }
 }

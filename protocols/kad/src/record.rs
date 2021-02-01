@@ -163,14 +163,14 @@ mod tests {
     use std::time::Duration;
 
     impl Arbitrary for Key {
-        fn arbitrary<G: Gen>(_: &mut G) -> Key {
+        fn arbitrary(_: &mut Gen) -> Key {
             let hash = rand::thread_rng().gen::<[u8; 32]>();
             Key::from(Multihash::wrap(Code::Sha2_256.into(), &hash).unwrap())
         }
     }
 
     impl Arbitrary for Record {
-        fn arbitrary<G: Gen>(g: &mut G) -> Record {
+        fn arbitrary(g: &mut Gen) -> Record {
             Record {
                 key: Key::arbitrary(g),
                 value: Vec::arbitrary(g),
@@ -185,7 +185,7 @@ mod tests {
     }
 
     impl Arbitrary for ProviderRecord {
-        fn arbitrary<G: Gen>(g: &mut G) -> ProviderRecord {
+        fn arbitrary(g: &mut Gen) -> ProviderRecord {
             ProviderRecord {
                 key: Key::arbitrary(g),
                 provider: PeerId::random(),

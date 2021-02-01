@@ -136,7 +136,7 @@ fn random_multihash() -> Multihash {
 struct Seed([u8; 32]);
 
 impl Arbitrary for Seed {
-    fn arbitrary<G: Gen>(g: &mut G) -> Seed {
+    fn arbitrary(g: &mut Gen) -> Seed {
         Seed(g.gen())
     }
 }

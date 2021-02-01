@@ -436,10 +436,11 @@ mod tests {
     use quickcheck::*;
     use rand::{Rng, seq::SliceRandom};
     use std::collections::HashSet;
+    use std::convert::TryInto;
     use std::iter;
 
     impl Arbitrary for ResultIter<std::vec::IntoIter<Key<PeerId>>> {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        fn arbitrary(g: &mut Gen) -> Self {
             let target = Target::arbitrary(g).0;
             let num_closest_iters = g.gen_range(0, 20 + 1);
             let peers = random_peers(
@@ -520,14 +521,14 @@ mod tests {
     struct Target(KeyBytes);
 
     impl Arbitrary for Target {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        fn arbitrary(g: &mut Gen) -> Self {
             Target(Key::from(random_peers(1, g).pop().unwrap()).into())
         }
     }
 
-    fn random_peers<R: Rng>(n: usize, g: &mut R) -> Vec<PeerId> {
+    fn random_peers(n: usize, g: &mut Gen) -> Vec<PeerId> {
         (0 .. n).map(|_| PeerId::from_multihash(
-            Multihash::wrap(Code::Sha2_256.into(), &g.gen::<[u8; 32]>()).unwrap()
+            Multihash::wrap(Code::Sha2_256.into(), (0..32).map(|_| u8::arbitrary(g)).collect::<Vec<_>>().try_into().unwrap()).unwrap()
         ).unwrap()).collect()
     }
 
@@ -561,7 +562,7 @@ mod tests {
     struct Parallelism(NonZeroUsize);
 
     impl Arbitrary for Parallelism{
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        fn arbitrary(g: &mut Gen) -> Self {
             Parallelism(NonZeroUsize::new(g.gen_range(1, 10)).unwrap())
         }
     }
@@ -570,13 +571,13 @@ mod tests {
     struct NumResults(NonZeroUsize);
 
     impl Arbitrary for NumResults{
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        fn arbitrary(g: &mut Gen) -> Self {
             NumResults(NonZeroUsize::new(g.gen_range(1, K_VALUE.get())).unwrap())
         }
     }
 
     impl Arbitrary for ClosestPeersIterConfig {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        fn arbitrary(g: &mut Gen) -> Self {
             ClosestPeersIterConfig {
                 parallelism: Parallelism::arbitrary(g).0,
                 num_results: NumResults::arbitrary(g).0,
@@ -589,7 +590,7 @@ mod tests {
     struct PeerVec(pub Vec<Key<PeerId>>);
 
     impl Arbitrary for PeerVec {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        fn arbitrary(g: &mut Gen) -> Self {
             PeerVec(
                 (0..g.gen_range(1, 60))
                     .map(|_| PeerId::random())
@@ -720,8 +721,8 @@ mod tests {
     }
 
     impl Arbitrary for Graph {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let mut peer_ids = random_peers(g.gen_range(K_VALUE.get(), 200), g)
+        fn arbitrary(g: &mut Gen) -> Self {
+            let mut peer_ids = random_peers(K_VALUE.get() + usize::arbitrary(g) % 180, g)
                 .into_iter()
                 .map(|peer_id| (peer_id.clone(), Key::from(peer_id)))
                 .collect::<Vec<_>>();

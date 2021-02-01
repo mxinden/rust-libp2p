@@ -471,7 +471,7 @@ mod tests {
     use rand::{Rng, rngs::StdRng, SeedableRng};
     use std::{iter, time::Duration};
 
-    fn random_peers<R: Rng>(n: usize, g: &mut R) -> Vec<PeerId> {
+    fn random_peers(n: usize, g: &mut Gen) -> Vec<PeerId> {
         (0 .. n).map(|_| PeerId::from_multihash(
             Multihash::wrap(Code::Sha2_256.into(), &g.gen::<[u8; 32]>()).unwrap()
         ).unwrap()).collect()
@@ -482,8 +482,8 @@ mod tests {
     }
 
     impl Arbitrary for ClosestPeersIter {
-        fn arbitrary<G: Gen>(g: &mut G) -> ClosestPeersIter {
-            let known_closest_peers = random_peers(g.gen_range(1, 60), g)
+        fn arbitrary(g: &mut Gen) -> ClosestPeersIter {
+            let known_closest_peers = random_peers(1 + usize::arbitrary(g) % 60, g)
                 .into_iter()
                 .map(Key::from);
             let target = Key::from(Into::<Multihash>::into(PeerId::random()));
@@ -500,7 +500,7 @@ mod tests {
     struct Seed([u8; 32]);
 
     impl Arbitrary for Seed {
-        fn arbitrary<G: Gen>(g: &mut G) -> Seed {
+        fn arbitrary(g: &mut Gen) -> Seed {
             Seed(g.gen())
         }
     }

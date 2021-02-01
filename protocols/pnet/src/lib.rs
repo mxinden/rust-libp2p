@@ -314,12 +314,16 @@ impl fmt::Display for PnetError {
 mod tests {
     use super::*;
     use quickcheck::*;
+    use std::convert::TryInto;
 
     impl Arbitrary for PreSharedKey {
-        fn arbitrary<G: Gen>(g: &mut G) -> PreSharedKey {
-            let mut key = [0; KEY_SIZE];
-            g.fill_bytes(&mut key);
-            PreSharedKey(key)
+        fn arbitrary(g: &mut Gen) -> PreSharedKey {
+            PreSharedKey(
+                (0..KEY_SIZE).map(|_| Arbitrary::arbitrary(g))
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap(),
+            )
         }
     }
 
